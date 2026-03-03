@@ -37,7 +37,7 @@ spec:
       containers:
         - name: frontend
           # IMAGE TAG IS UPDATED HERE BY JENKINS STAGE 7
-          image: 379354426440.dkr.ecr.us-east-1.amazonaws.com/enterprise-gitops-eks/frontend:404ab914
+          image: 379354426440.dkr.ecr.us-east-1.amazonaws.com/enterprise-gitops-eks/frontend:d32cb2c8
           ports:
             - containerPort: 80
 
