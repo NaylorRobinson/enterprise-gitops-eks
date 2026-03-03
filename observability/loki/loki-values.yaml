@@ -1,0 +1,35 @@
+# ============================================================
+# loki-values.yaml — Loki Log Aggregation Config
+# ============================================================
+# WHAT THIS FILE DOES:
+# Configures Loki — the logging system.
+# Loki collects logs from every pod in EKS into one place.
+# You view the logs in Grafana side by side with your metrics.
+# Think of it as the grep/search for all your pod output.
+# ============================================================
+
+# Install command:
+# helm repo add grafana https://grafana.github.io/helm-charts
+# helm install loki grafana/loki-stack \
+#   -f observability/loki/loki-values.yaml \
+#   --namespace monitoring
+
+loki:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+
+promtail:
+  # Promtail is the agent that ships logs from each node to Loki
+  enabled: true
+  config:
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+
+grafana:
+  # Connects Loki to your existing Grafana instance
+  enabled: false   # Set to false because we installed Grafana with Prometheus stack
+  sidecar:
+    datasources:
+      enabled: true

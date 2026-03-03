@@ -1,0 +1,176 @@
+// ============================================================
+// Jenkinsfile — Frontend Service CI Pipeline
+// ============================================================
+// WHAT THIS FILE DOES:
+// This is the CI pipeline for the frontend (the color-change demo app).
+// Jenkins watches the GitHub repo for code pushes.
+// When a push happens, this pipeline runs automatically in order:
+// 1. Pull the code
+// 2. Run tests
+// 3. Scan code quality
+// 4. Build Docker image
+// 5. Scan image for security vulnerabilities
+// 6. Push image to AWS ECR
+// 7. Update the GitOps repo with the new image tag (triggers ArgoCD)
+// ============================================================
+
+pipeline {
+    agent any
+
+    // These variables are used throughout the pipeline
+    environment {
+        AWS_REGION        = 'us-east-1'
+        ECR_REGISTRY      = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        ECR_REPO          = 'enterprise-gitops-eks/frontend'
+        IMAGE_TAG         = "${GIT_COMMIT[0..7]}"   // First 8 chars of git commit hash
+        GITOPS_REPO       = 'https://github.com/NaylorRobinson/enterprise-gitops-eks.git'
+        GITOPS_MANIFEST   = 'k8s/overlays/production/frontend-deployment.yaml'
+    }
+
+    stages {
+
+        // ── Stage 1: Checkout ──────────────────────────────
+        // Jenkins pulls the latest code from GitHub
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo "Building commit: ${GIT_COMMIT}"
+                echo "Branch: ${GIT_BRANCH}"
+            }
+        }
+
+        // ── Stage 2: Unit Tests ────────────────────────────
+        // Runs your test suite — pipeline stops here if tests fail
+        // This protects production from broken code
+        stage('Unit Tests') {
+            steps {
+                sh '''
+                    echo "Running frontend unit tests..."
+                    # Install dependencies
+                    npm install
+                    # Run tests
+                    npm test -- --watchAll=false --coverage
+                '''
+            }
+            post {
+                always {
+                    // Publishes test results to Jenkins UI
+                    junit 'test-results/**/*.xml'
+                }
+            }
+        }
+
+        // ── Stage 3: Static Code Analysis ─────────────────
+        // SonarQube scans for bugs, code smells, and security issues
+        // Pipeline stops if quality gate fails
+        stage('Code Quality Scan') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        sonar-scanner \
+                          -Dsonar.projectKey=enterprise-frontend \
+                          -Dsonar.sources=./src \
+                          -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+                    '''
+                }
+            }
+        }
+
+        // ── Stage 4: Docker Build ──────────────────────────
+        // Builds a Docker image tagged with the git commit hash
+        // This makes every image traceable back to the exact code change
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    docker build \
+                      -t ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG} \
+                      -t ${ECR_REGISTRY}/${ECR_REPO}:latest \
+                      ./app
+                '''
+                echo "Built image: ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+            }
+        }
+
+        // ── Stage 5: Trivy Security Scan ──────────────────
+        // Scans the Docker image for known CVEs (vulnerabilities)
+        // CRITICAL severity vulnerabilities stop the pipeline
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                    trivy image \
+                      --exit-code 1 \
+                      --severity CRITICAL \
+                      --no-progress \
+                      ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        // ── Stage 6: Push to ECR ───────────────────────────
+        // Authenticates with AWS ECR and pushes the Docker image
+        // Jenkins uses the aws-credentials stored in Jenkins Credentials Manager
+        stage('Push to ECR') {
+            steps {
+                withCredentials([aws(credentialsId: 'aws-credentials')]) {
+                    sh '''
+                        # Login to ECR
+                        aws ecr get-login-password --region ${AWS_REGION} \
+                          | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+
+                        # Push both tags
+                        docker push ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}
+                        docker push ${ECR_REGISTRY}/${ECR_REPO}:latest
+                    '''
+                }
+            }
+        }
+
+        // ── Stage 7: Update GitOps Repo ────────────────────
+        // Updates the Kubernetes manifest with the new image tag
+        // ArgoCD detects this change and automatically deploys the new version
+        // This is the handoff from CI (Jenkins) to CD (ArgoCD)
+        stage('Update GitOps Repo') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-credentials',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh '''
+                        # Configure git
+                        git config --global user.email "jenkins@enterprise-gitops-eks.com"
+                        git config --global user.name "Jenkins CI"
+
+                        # Clone the GitOps repo
+                        git clone https://${GIT_USER}:${GIT_TOKEN}@github.com/NaylorRobinson/enterprise-gitops-eks.git gitops-update
+                        cd gitops-update
+
+                        # Update the image tag in the Kubernetes manifest
+                        sed -i "s|image: .*frontend:.*|image: ${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}|g" ${GITOPS_MANIFEST}
+
+                        # Commit and push the change
+                        git add ${GITOPS_MANIFEST}
+                        git commit -m "ci: update frontend image to ${IMAGE_TAG} [skip ci]"
+                        git push origin main
+
+                        echo "GitOps repo updated — ArgoCD will now deploy ${IMAGE_TAG}"
+                    '''
+                }
+            }
+        }
+    }
+
+    // ── Post-pipeline Actions ──────────────────────────────
+    post {
+        success {
+            echo "Pipeline SUCCESS — frontend:${IMAGE_TAG} deployed to EKS via ArgoCD"
+        }
+        failure {
+            echo "Pipeline FAILED — check the stage above for details"
+        }
+        always {
+            // Clean up Docker images to free disk space
+            sh 'docker system prune -f || true'
+        }
+    }
+}

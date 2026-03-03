@@ -1,0 +1,33 @@
+# ============================================================
+# ingress.yaml — AWS Application Load Balancer Ingress
+# ============================================================
+# WHAT THIS FILE DOES:
+# Creates the public-facing URL for your app using AWS ALB.
+# The AWS Load Balancer Controller (installed in EKS) reads this
+# file and automatically creates an ALB in your public subnet.
+# This is the URL you show on camera for the demo.
+# ============================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ingress
+  annotations:
+    # These annotations tell the AWS Load Balancer Controller
+    # what kind of ALB to create
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing        # Public ALB
+    alb.ingress.kubernetes.io/target-type: ip                # Routes to pod IPs directly
+    alb.ingress.kubernetes.io/healthcheck-path: /            # Health check endpoint
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]' # Listen on port 80
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80

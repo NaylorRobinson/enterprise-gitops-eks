@@ -1,0 +1,90 @@
+# ============================================================
+# argocd-application.yaml — ArgoCD App Definition
+# ============================================================
+# WHAT THIS FILE DOES:
+# Tells ArgoCD where to find your Kubernetes manifests (GitHub)
+# and where to deploy them (EKS cluster).
+# ArgoCD continuously watches the GitOps repo. When Jenkins
+# updates the image tag, ArgoCD detects the change and
+# automatically syncs the cluster to match what's in Git.
+# ============================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: enterprise-frontend
+  namespace: argocd          # ArgoCD lives in its own namespace
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io   # Cleans up when app is deleted
+spec:
+  project: default
+
+  # WHERE IS THE CODE? — Points to your GitOps repo
+  source:
+    repoURL: https://github.com/NaylorRobinson/enterprise-gitops-eks.git
+    targetRevision: main
+    path: k8s/overlays/production   # Production overlay folder
+
+  # WHERE TO DEPLOY? — Your EKS cluster
+  destination:
+    server: https://kubernetes.default.svc   # In-cluster reference (ArgoCD is inside EKS)
+    namespace: production
+
+  syncPolicy:
+    automated:
+      prune: true      # Deletes resources removed from Git
+      selfHeal: true   # Corrects manual changes back to Git state (drift detection)
+    syncOptions:
+      - CreateNamespace=true   # Creates the namespace if it doesn't exist
+    retry:
+      limit: 3         # Retry failed syncs up to 3 times
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ── Dev Environment App ──────────────────────────────────────
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: enterprise-frontend-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/NaylorRobinson/enterprise-gitops-eks.git
+    targetRevision: main
+    path: k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+---
+# ── Staging Environment App ──────────────────────────────────
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: enterprise-frontend-staging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/NaylorRobinson/enterprise-gitops-eks.git
+    targetRevision: main
+    path: k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

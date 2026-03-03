@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise App - Version 2.0</title>
+  <style>
+    /* Version 2.0 — UVA Cavaliers Theme */
+    /* Navy: #232D4B | Orange: #E57200 */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #232D4B;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      text-align: center;
+      color: #E57200;
+    }
+
+    /* UVA Logo — V with crossed sabers */
+    .uva-logo {
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      font-size: 3rem;
+      color: #E57200;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      color: #ffffff;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #a0aec0;
+      margin-bottom: 0.4rem;
+    }
+
+    .version-badge {
+      background: #E57200;
+      color: #232D4B;
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 1rem;
+      font-weight: bold;
+      display: inline-block;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- UVA Cavaliers Logo: V with crossed sabers (SVG) -->
+    <div class="uva-logo">
+      <svg width="220" height="200" viewBox="0 0 220 200" xmlns="http://www.w3.org/2000/svg">
+
+        <!-- Outer navy V shape -->
+        <polygon
+          points="110,170 10,20 45,20 110,130 175,20 210,20"
+          fill="#232D4B"
+          stroke="#E57200"
+          stroke-width="6"
+        />
+
+        <!-- Orange V fill (inner) -->
+        <polygon
+          points="110,150 30,25 58,25 110,118 162,25 190,25"
+          fill="#E57200"
+        />
+
+        <!-- Dark stripe down center of V -->
+        <polygon
+          points="110,150 98,120 110,90 122,120"
+          fill="#232D4B"
+        />
+
+        <!-- Left saber -->
+        <g transform="rotate(-20, 55, 165)">
+          <!-- Blade -->
+          <rect x="20" y="160" width="90" height="6" rx="3" fill="#232D4B" stroke="#E57200" stroke-width="1.5"/>
+          <!-- Guard -->
+          <rect x="108" y="155" width="10" height="16" rx="2" fill="#E57200"/>
+          <!-- Handle -->
+          <rect x="118" y="158" width="28" height="10" rx="3" fill="#232D4B" stroke="#E57200" stroke-width="1.5"/>
+        </g>
+
+        <!-- Right saber (mirrored) -->
+        <g transform="rotate(20, 165, 165)">
+          <!-- Blade -->
+          <rect x="110" y="160" width="90" height="6" rx="3" fill="#232D4B" stroke="#E57200" stroke-width="1.5"/>
+          <!-- Guard -->
+          <rect x="102" y="155" width="10" height="16" rx="2" fill="#E57200"/>
+          <!-- Handle -->
+          <rect x="74" y="158" width="28" height="10" rx="3" fill="#232D4B" stroke="#E57200" stroke-width="1.5"/>
+        </g>
+
+      </svg>
+    </div>
+
+    <h1>Version 2.0 - Wahoowa!</h1>
+    <h2>University of Virginia Cavaliers</h2>
+    <p>Deployed automatically via Jenkins + ArgoCD GitOps</p>
+    <p>No manual kubectl. No console clicks. Just Git.</p>
+    <div class="version-badge">⚔ Pipeline Complete ⚔</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,91 @@
+# ============================================================
+# deployment.yaml — Kubernetes Deployment (Base)
+# ============================================================
+# WHAT THIS FILE DOES:
+# Tells Kubernetes how to run your frontend app.
+# A Deployment manages pods — it ensures your app is always
+# running, restarts it if it crashes, and handles rolling
+# updates so there's zero downtime during deploys.
+# The image tag here gets updated by Jenkins automatically.
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+    version: v1
+spec:
+  replicas: 2        # Run 2 copies for high availability
+  selector:
+    matchLabels:
+      app: frontend
+
+  # Rolling update — replaces pods one at a time, no downtime
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Can temporarily have 1 extra pod during update
+      maxUnavailable: 0  # Never go below desired replica count
+
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          # IMAGE TAG IS UPDATED HERE BY JENKINS STAGE 7
+          image: PLACEHOLDER/enterprise-gitops-eks/frontend:latest
+          ports:
+            - containerPort: 80
+
+          # Resource limits — prevents one pod from consuming all node resources
+          resources:
+            requests:
+              cpu: "100m"       # 0.1 CPU cores minimum
+              memory: "128Mi"   # 128MB RAM minimum
+            limits:
+              cpu: "250m"       # 0.25 CPU cores maximum
+              memory: "256Mi"   # 256MB RAM maximum
+
+          # Health checks — Kubernetes restarts unhealthy pods automatically
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+# ============================================================
+# service.yaml — Kubernetes Service
+# ============================================================
+# WHAT THIS FILE DOES:
+# Creates a stable internal DNS name and IP for your frontend pods.
+# The ALB Ingress uses this service to route traffic to your pods.
+# Without a Service, pods have random IPs that change on restart.
+# ============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend     # Routes traffic to pods with this label
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP     # Internal only — ALB Ingress handles external access
