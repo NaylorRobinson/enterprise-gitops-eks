@@ -13,14 +13,11 @@ kind: Ingress
 metadata:
   name: frontend-ingress
   annotations:
-    # These annotations tell the AWS Load Balancer Controller
-    # what kind of ALB to create
     kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing        # Public ALB
-    alb.ingress.kubernetes.io/target-type: ip                # Routes to pod IPs directly
-    alb.ingress.kubernetes.io/healthcheck-path: /            # Health check endpoint
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]' # Listen on port 80
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
 spec:
+  ingressClassName: alb
   rules:
     - http:
         paths:
