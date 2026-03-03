@@ -137,6 +137,7 @@ pipeline {
                         grep "image:" ${GITOPS_MANIFEST}
                         git add ${GITOPS_MANIFEST}
                         git commit -m "ci: update frontend image to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
+                        git checkout -B main
                         git push https://${GIT_USER}:${GIT_TOKEN}@github.com/NaylorRobinson/enterprise-gitops-eks.git main
                         echo "GitOps repo updated - ArgoCD will now deploy ${IMAGE_TAG}"
                     '''
