@@ -23,7 +23,7 @@ spec:
   source:
     repoURL: https://github.com/NaylorRobinson/enterprise-gitops-eks.git
     targetRevision: main
-    path: k8s/overlays/production   # Production overlay folder
+    path: k8s/base  # Production overlay folder
 
   # WHERE TO DEPLOY? — Your EKS cluster
   destination:
